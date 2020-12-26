@@ -1,9 +1,14 @@
 import time
+from scapy.arch import get_if_addr
 from socket import *
 
 PORT_NUMBER = 2021
 TEAM_NAME = 'Moran&Amit\n'
 WAITING_SEC = 10
+LISTENING_PORT = 13117
+ALL_ADRESSES = ''
+BUFFER_SIZE = 1024
+
 
 class Client:
     def __init__(self):
@@ -23,42 +28,56 @@ class Client:
             self.connect(addr)
             self.send_name(addr)
             self.game_mode()
+            self.finish_game()
 
     def looking_for_server(self):
+        self.sock.bind((ALL_ADRESSES, LISTENING_PORT))
         while True:
-            data, addr = self.sock.recvfrom()
-            if data:
+            data, addr = self.sock.recvfrom(BUFFER_SIZE)
+            if check_message(data):
                 return addr  # The server address
 
     def connect(self, addr):
         print(f"Received offer from {addr}, attempting to connect...")
         self.sock = socket(AF_INET, SOCK_STREAM)
         self.sock.connect((addr, PORT_NUMBER))
+        self.sock.setblocking(0)
         #TODO: maybe should include timeout!
-
-    def game_mode(self):
+    
+    def send_name(self):
         self.sock.send(TEAM_NAME)
 
     def check_message(message, name, addr):
+        if not data:
+            return False
         if message[0:4].encode() != '0xfeedbeef':
-            return ""
+            return False
         else if message[4:5].encode() != '0x2':
-            return "" # TODO think how get offer gets here
-        else if message[5:7].encode() != '0xfeedbeef': # TODO didnt understand
-            return ""
+            return False
+        else if not 1 <= int(message[5:7].encode()) <= 65535
+            return False
         else:
-            return team_name.decode()
+            return True
 
     def game_mode(self):
-        start_time = time.time()
-        while time.time() - start_time < WAITING_SEC: 
+        while True:
+            is_game_start_message = self.sock.recv(BUFFER_SIZE)
+            if is_game_start_message:
+                print(is_game_start_message[0])
+                break
+
+        while True: # TODO: If game is over? stop game 
+            is_game_start_message = self.sock.recv(BUFFER_SIZE)
+
+            if is_game_start_message:
+                print(is_game_start_message[0])
+                break
+
             c = sys.stdin.read(1)
             self.sock.send(c)
-            # TODO take care of data coming in over TCP
 
     def finish_game(self):
         print('Server disconnected, listening for offer requests...')
-        return self.looking_for_server()
 
 def main():
     client = Client()
