@@ -39,7 +39,8 @@ class Server:
     def init_tcp(self):
         server_socket = socket(AF_INET,SOCK_STREAM)
         server_socket.bind(('',SERVER_TCP_PORT))
-        server_socket.listen(1)
+        server_socket.listen(5)
+        server_socket.setblocking(0)
         return server_socket
     
     def init_udp(self):
@@ -70,10 +71,13 @@ class Server:
         curr_time = 0
         while(curr_time < 10):
             curr_time += 1
-            clinet_socket, addr = self.tcp_server_socket.accept()
-            name = clinet_socket.recv(BUFFER)
-            group_number = insert_to_group(name, clinet_socket, addr)
-            client_socket.settimeout(10.0)
+            try:
+                clinet_socket, addr = self.tcp_server_socket.accept()
+                name = clinet_socket.recv(BUFFER)
+                group_number = insert_to_group(name, clinet_socket, addr)
+                client_socket.settimeout(10.0)
+            except Exception as error:
+                print(error)
             time.sleep(1)
             
             
@@ -142,12 +146,13 @@ class Server:
         # curr_time = start_time
         curr_time = 0
         while(curr_time < 10):
+            print(get_if_addr('eth1'))
             # while time.time() - curr_time == 1:
             curr_time += 1
             offer_message = MESSAGE_STRUCT.pack(0xfeedbeef, 2, SERVER_TCP_PORT) #check what is the third thing                
             print('BEFORE BROADCASTING')
             time.sleep(1)
-            self.udp_server_socket.sendto(offer_message, ('<broadcast>', BROADCASTING_PORT)) # TODO sent in broadcast + manage broadcast
+            self.udp_server_socket.sendto(offer_message, ('172.1.255.255', BROADCASTING_PORT)) # TODO sent in broadcast + manage broadcast
             
 
 def get_results_message(typed_chars_group_1, typed_chars_group_2):

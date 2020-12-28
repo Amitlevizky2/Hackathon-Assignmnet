@@ -3,7 +3,7 @@ from scapy.arch import get_if_addr
 from socket import *
 from struct import *
 
-PORT_NUMBER = 2021
+PORT_NUMBER = 2120
 TEAM_NAME = 'Moran&Amit\n'
 WAITING_SEC = 10
 LISTENING_PORT = 13117
@@ -37,7 +37,7 @@ class Client:
             self.finish_game()
 
     def looking_for_server(self):
-        self.sock.bind((ALL_ADRESSES, LISTENING_PORT))
+        self.sock.bind(('', LISTENING_PORT))
         while True:
             print("In looking for server")
             data, addr = self.sock.recvfrom(BUFFER_SIZE)
@@ -49,7 +49,7 @@ class Client:
         print(f"Received offer from {addr}, attempting to connect...")
         self.sock = socket(AF_INET, SOCK_STREAM)
         print(addr, PORT_NUMBER)
-        self.sock.connect((addr, PORT_NUMBER))
+        self.sock.connect((addr[0], PORT_NUMBER))
         self.sock.setblocking(0)
         #TODO: maybe should include timeout!
     
