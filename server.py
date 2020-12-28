@@ -1,27 +1,31 @@
 import time
-import thread
+import threading
 import random
 from scapy.arch import get_if_addr
 from socket import *
+from struct import *
 
 TEAM_NAME = 'Moran&Amit\n'
 WAITING_SEC = 10
 BUFFER = 1024
 UDP_ADDR_TUPLE = ("", 13117)
-MESSAGE_STRUCT = Struct("4c 1c 2c")
+MESSAGE_STRUCT = struct.Struct("lbh")
 BROADCASTING_PORT = 13117
 SERVER_TCP_PORT = 2120
 DRAW = 0
 GROUP1 = 1
 GROUP2 = 2
+MESSAGE_COOKIE = b'0xfeedbeef'
+MESSAGE_TYPE = b'0x2'
+OFFER = 2
 
 
 class Server:
     def __init__(self):
         self.sock = socket(AF_INET, SOCK_DGRAM)
-        self.sock.bind(UDP_ADDR_TUPLE)
+        # self.sock.bind(UDP_ADDR_TUPLE)
         self.SERVER_IP = get_if_addr('eth1') # TODO check how to get the server's ip
-        self.address = (self.UDP_IP, self.UDP_PORT)
+        # self.address = (self.UDP_IP, self.UDP_PORT)
         self.server_addr = 0
         self.is_game_on = False
         self.team_names = []
@@ -29,17 +33,21 @@ class Server:
                        'Group 2': {}}
         self.scores = {}  #  {name: score}
 
-        init_tcp()
-        init_udp()
+        self.tcp_server_socket = self.init_tcp()
+        self.udp_server_socket = self.init_udp()
 
     def init_tcp(self):
-        server_socket = self.sock.socket(AF_INET,SOCK_STREAM)
+        server_socket = socket(AF_INET,SOCK_STREAM)
         server_socket.bind(('',SERVER_TCP_PORT))
         server_socket.listen(1)
+        return server_socket
     
     def init_udp(self):
-        server_socket = self.sock.socket(AF_INET, SOCK_DGRAM)
-        server_socket.bind('', BROADCASTING_PORT)
+        server_socket = socket(AF_INET, SOCK_DGRAM)
+        server_socket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+        server_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        # server_socket.bind(UDP_ADDR_TUPLE)
+        return server_socket
     
     def start(self):
         while True:
@@ -47,17 +55,26 @@ class Server:
             self.groups['Group 1'] = {}
             self.groups['Group 2'] = {}
             self.scores = {}
-            thread.start_new_thread(tcp_listen)  #  Start listining to TCP clinets requests (Get names)
-            thread.start_new_thread(broadcast)   #  Start broadcasting 'offer' messages
+            t1 = threading.Thread(target=self.tcp_listen)  #  Start listining to TCP clinets requests (Get names)
+            t2 = threading.Thread(target=self.broadcast)   #  Start broadcasting 'offer' messages
+
+            t1.start()
+            t2.start()
+
+            t1.join()
+            t2.join()
     
     def tcp_listen(self):
         print(f"Server started, listening on IP address {self.SERVER_IP}")
-        start_time = time.time()
-        while(time.time() - start_time <= 10):
-            clinet_socket, addr = self.sock.accept()
+        # start_time = time.time()
+        curr_time = 0
+        while(curr_time < 10):
+            curr_time += 1
+            clinet_socket, addr = self.tcp_server_socket.accept()
             name = clinet_socket.recv(BUFFER)
             group_number = insert_to_group(name, clinet_socket, addr)
             client_socket.settimeout(10.0)
+            time.sleep(1)
             
             
         group_1_names = [name for name in self.groups['Group 1'].keys()]
@@ -79,7 +96,7 @@ class Server:
         for key,value in self.groups.items():
             for name,tup in value.items():
                 #{name: (client_socket, addr)}
-                thread.start_new_thread(self.handle_client, (tup[0], tup[1], start_game_message, name))
+                threading.Thread(target=self.handle_client, args=(tup[0], tup[1], start_game_message, name))
         
         start_time = time.time()
         while(time.time() - start_time <= 10):
@@ -90,13 +107,6 @@ class Server:
         typed_chars_group_2 = self.caculate_typed_chars('Group 2')
 
         results_message = self.get_results_message(typed_chars_group_1, typed_chars_group_2)
-
-        # send result message to each of the teams(clients)
-        # for key,value in self.groups.items():
-        #     for value in value.values():
-        #         client_socket = value[0]
-        #         client_socket.send(results_message)
-        #         client_socket.close()
         
         print(results_message)
         
@@ -128,13 +138,17 @@ class Server:
         return typed
 
     def broadcast(self):
-        start_time = time.time() 
-        curr_time = start_time
-        while(time.time() - start_time <= 10):
-            while time.time() - curr_time == 1:
-                curr_time = curr_time + 1
-                offer_message = '0xfeedbeef' + '0x2' + "" #check what is the third thing
-                self.sock.sendto(message, ('<broadcast>', BROADCASTING_PORT)) # TODO sent in broadcast + manage broadcast
+        # start_time = time.time() 
+        # curr_time = start_time
+        curr_time = 0
+        while(curr_time < 10):
+            # while time.time() - curr_time == 1:
+            curr_time += 1
+            offer_message = MESSAGE_STRUCT.pack(0xfeedbeef, 2, SERVER_TCP_PORT) #check what is the third thing                
+            print('BEFORE BROADCASTING')
+            time.sleep(1)
+            self.udp_server_socket.sendto(offer_message, ('<broadcast>', BROADCASTING_PORT)) # TODO sent in broadcast + manage broadcast
+            
 
 def get_results_message(typed_chars_group_1, typed_chars_group_2):
     winner = ''

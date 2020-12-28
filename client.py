@@ -1,6 +1,7 @@
 import time
 from scapy.arch import get_if_addr
 from socket import *
+from struct import *
 
 PORT_NUMBER = 2021
 TEAM_NAME = 'Moran&Amit\n'
@@ -8,11 +9,15 @@ WAITING_SEC = 10
 LISTENING_PORT = 13117
 ALL_ADRESSES = ''
 BUFFER_SIZE = 1024
-
+MESSAGE_COOKIE = 0xfeedbeef
+MESSAGE_TYPE = 2
+MESSAGE_STRUCT = struct.Struct("lbh")
+OFFER = 2
 
 class Client:
     def __init__(self):
-        self.sock = 0
+        self.sock = socket(AF_INET, SOCK_DGRAM)
+        self.sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         self.UDP_PORT = 2120
         self.UDP_IP = get_if_addr('eth1')
         self.address = (self.UDP_IP, self.UDP_PORT)
@@ -21,9 +26,10 @@ class Client:
     # def init_connection(self):
     #     pass
 
-    def start():
+    def start(self):
         print('Client started, listening for offer requests...')
         while True:
+            print("In start client method")
             addr = self.looking_for_server()
             self.connect(addr)
             self.send_name(addr)
@@ -33,13 +39,16 @@ class Client:
     def looking_for_server(self):
         self.sock.bind((ALL_ADRESSES, LISTENING_PORT))
         while True:
+            print("In looking for server")
             data, addr = self.sock.recvfrom(BUFFER_SIZE)
-            if check_message(data):
+            print(f"ADDR: {addr}\n DATA: {data}")
+            if self.check_message(data):
                 return addr  # The server address
 
     def connect(self, addr):
         print(f"Received offer from {addr}, attempting to connect...")
         self.sock = socket(AF_INET, SOCK_STREAM)
+        print(addr, PORT_NUMBER)
         self.sock.connect((addr, PORT_NUMBER))
         self.sock.setblocking(0)
         #TODO: maybe should include timeout!
@@ -47,20 +56,34 @@ class Client:
     def send_name(self):
         self.sock.send(TEAM_NAME)
 
-    def check_message(message, name, addr):
-        if not data:
+    def check_message(self, data):
+        # cookie = data[:4]
+        # type_m = data[4:5]
+        # port = data[5:7]
+
+        try:
+            cookie, type_m, port = MESSAGE_STRUCT.unpack(data)
+
+            # print(data)
+            print(f'cookie: {cookie}\n type: {type_m}, port: {port}')
+
+            if not data:
+                return False
+            if cookie != MESSAGE_COOKIE:
+                return False
+            elif type_m != MESSAGE_TYPE:
+                return False
+            elif not 1 <= port <= 65535:
+                return False
+            else:
+                return True
+        except Exception as e:
+            print (e)
             return False
-        if message[0:4].encode() != '0xfeedbeef':
-            return False
-        else if message[4:5].encode() != '0x2':
-            return False
-        else if not 1 <= int(message[5:7].encode()) <= 65535
-            return False
-        else:
-            return True
 
     def game_mode(self):
         while True:
+            print("In start game_mode method")
             is_game_start_message = self.sock.recv(BUFFER_SIZE)
             if is_game_start_message:
                 print(is_game_start_message[0])
