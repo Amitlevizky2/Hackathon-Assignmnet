@@ -18,12 +18,12 @@ OFFER = 2
 
 class Client:
     def __init__(self):
-        self.sock = socket(AF_INET, SOCK_DGRAM)
-        self.sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        self.sock = 0
         self.UDP_PORT = 2120
         self.UDP_IP = get_if_addr('eth1')
         self.address = (self.UDP_IP, self.UDP_PORT)
         self.server_addr = 0
+        self.server_socket = 0
     
     # def init_connection(self):
     #     pass
@@ -39,6 +39,8 @@ class Client:
             self.finish_game()
 
     def looking_for_server(self):
+        self.sock = socket(AF_INET, SOCK_DGRAM)
+        self.sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         self.sock.bind(('', LISTENING_PORT))
         while True:
             print("In looking for server")
@@ -49,15 +51,15 @@ class Client:
 
     def connect(self, addr):
         print(f"Received offer from {addr}, attempting to connect...")
-        self.sock = socket(AF_INET, SOCK_STREAM)
+        self.server_socket = socket(AF_INET, SOCK_STREAM)
         print(addr, PORT_NUMBER)
-        self.sock.connect((addr[0], PORT_NUMBER))
-        self.sock.setblocking(0)
+        self.server_socket.connect((addr[0], PORT_NUMBER))
+        self.server_socket.setblocking(0)
         #TODO: maybe should include timeout!
     
     def send_name(self):
         # team_message = TEAM_NAME_STRUCT.pack(TEAM_NAME)
-        self.sock.send(TEAM_NAME.encode())
+        self.server_socket.send(TEAM_NAME.encode())
 
     def check_message(self, data):
         # cookie = data[:4]
@@ -88,7 +90,7 @@ class Client:
         print("In start game_mode method")
         while True:
             try:
-                is_game_start_message = self.sock.recv(BUFFER_SIZE)
+                is_game_start_message = self.server_socket.recv(BUFFER_SIZE)
                 if is_game_start_message:
                     print(is_game_start_message.decode())
                     break
@@ -96,8 +98,12 @@ class Client:
                 pass
         
         while True:
-            c = getch()
-            self.sock.send(c.encode())
+            try:
+                c = getch()
+                self.server_socket.send(c.encode())
+            except Exception as error:
+                self.sock.close()
+                break
             
 
     def finish_game(self):

@@ -77,7 +77,7 @@ class Server:
                 group_number = self.insert_to_group(name, client_socket, addr)
                 client_socket.settimeout(10.0)
             except Exception as error:
-                print(error)
+                pass
             time.sleep(1)
             
             
@@ -107,13 +107,25 @@ class Server:
         while(time.time() - start_time <= 10):
             self.is_game_on = True
         self.is_game_on = False
+        self.close_client_sockets()
 
         typed_chars_group_1 = self.caculate_typed_chars('Group 1')
         typed_chars_group_2 = self.caculate_typed_chars('Group 2')
 
+        print(typed_chars_group_1) 
+        print(typed_chars_group_2)
         results_message = self.get_results_message(typed_chars_group_1, typed_chars_group_2)
         
         print(results_message)
+        
+    
+    def close_client_sockets(self):
+        # client_sockets = [tup[0] for tup in self.groups['Group 1']] + [tup[0] for tup in self.groups['Group 2']]
+
+        client_socket = []
+        for key,value in self.groups.items():
+            for name,tup in value.items():
+                tup[0].close()
         
 
 
@@ -136,7 +148,7 @@ class Server:
                 #  Chacek letter validation
                 self.scores[name] += 1
             except Exception as error:
-                print(error)
+                pass
 
     def caculate_typed_chars(self, group_name):
         typed = 0
@@ -172,14 +184,15 @@ class Server:
         else:
             winner = 'Draw. Both groups typed the same number of characters.'
 
-        print('IN GET RESULT MESSAGE')
+        print(f'WINNER: {winner}')
         
         results_message = 'Game over!\n'
-        results_message += f'Group 1 typed in {typed_chars_group_1} characters.'
+        results_message += f'Group 1 typed in {typed_chars_group_1} characters.\n'
         results_message += f'Group 2 typed in {typed_chars_group_2} characters.\n'
-        results_message += winner
-        results_message += 'Congratulations to the winners:\n=='
+        results_message += winner + '\n'
+        results_message += 'Congratulations to the winners:\n==\n'
         results_message += '\n'.join(winner_group_names)
+        return results_message
 
 def main():
     server = Server()
