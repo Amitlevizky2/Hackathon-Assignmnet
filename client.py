@@ -12,6 +12,7 @@ BUFFER_SIZE = 1024
 MESSAGE_COOKIE = 0xfeedbeef
 MESSAGE_TYPE = 2
 MESSAGE_STRUCT = struct.Struct("lbh")
+TEAM_NAME_STRUCT = struct.Struct("<32s")
 OFFER = 2
 
 class Client:
@@ -32,7 +33,7 @@ class Client:
             print("In start client method")
             addr = self.looking_for_server()
             self.connect(addr)
-            self.send_name(addr)
+            self.send_name()
             self.game_mode()
             self.finish_game()
 
@@ -54,7 +55,8 @@ class Client:
         #TODO: maybe should include timeout!
     
     def send_name(self):
-        self.sock.send(TEAM_NAME)
+        # team_message = TEAM_NAME_STRUCT.pack(TEAM_NAME)
+        self.sock.send(TEAM_NAME.encode())
 
     def check_message(self, data):
         # cookie = data[:4]
@@ -82,13 +84,16 @@ class Client:
             return False
 
     def game_mode(self):
+        print("In start game_mode method")
         while True:
-            print("In start game_mode method")
-            is_game_start_message = self.sock.recv(BUFFER_SIZE)
-            if is_game_start_message:
-                print(is_game_start_message[0])
-                break
-
+            try:
+                is_game_start_message = self.sock.recv(BUFFER_SIZE)
+                if is_game_start_message:
+                    print(is_game_start_message[0])
+                    break
+            except Exception as error:
+                pass
+            
         while True: # TODO: If game is over? stop game 
             is_game_start_message = self.sock.recv(BUFFER_SIZE)
 

@@ -72,9 +72,10 @@ class Server:
         while(curr_time < 10):
             curr_time += 1
             try:
-                clinet_socket, addr = self.tcp_server_socket.accept()
-                name = clinet_socket.recv(BUFFER)
-                group_number = insert_to_group(name, clinet_socket, addr)
+                client_socket, addr = self.tcp_server_socket.accept()
+                name = client_socket.recv(BUFFER).decode()
+                print(f'NAME: {name}')
+                group_number = self.insert_to_group(name, client_socket, addr)
                 client_socket.settimeout(10.0)
             except Exception as error:
                 print(error)
@@ -99,8 +100,7 @@ class Server:
 
         for key,value in self.groups.items():
             for name,tup in value.items():
-                #{name: (client_socket, addr)}
-                threading.Thread(target=self.handle_client, args=(tup[0], tup[1], start_game_message, name))
+                threading.Thread(target=self.handle_client, args=(tup[0], tup[1], start_game_message, name)).start()
         
         start_time = time.time()
         while(time.time() - start_time <= 10):
@@ -116,16 +116,18 @@ class Server:
         
 
 
-    def insert_to_group(self, name, clinet_socket, addr):
+    def insert_to_group(self, name, client_socket, addr):
         group_number = random.randint(0,1)
-        self.groups['Group ' + str(group_number + 1)][name] = (clinet_socket, addr)
+        self.groups['Group ' + str(group_number + 1)][name] = (client_socket, addr)
         return group_number + 1
 
     def handle_client(self, client_socket, addr, start_game_message, name):
         while not self.is_game_on:
             pass
         
+        print('BEFOR START GAME MESSAGE')
         client_socket.send(start_game_message)
+        print(f'AFTER START GAME MESSAGE: {start_game_message}')
         while self.is_game_on:
             try:
                 letter = connectionSocket.recv(BUFFER)
@@ -134,7 +136,7 @@ class Server:
             except Exception as error:
                 print(error)
 
-    def caculate_typed_chars(group_name):
+    def caculate_typed_chars(self, group_name):
         typed = 0
         for key,value in self.scores.items():
             if key in self.groups[group_name].keys():
@@ -155,7 +157,7 @@ class Server:
             self.udp_server_socket.sendto(offer_message, ('172.1.255.255', BROADCASTING_PORT)) # TODO sent in broadcast + manage broadcast
             
 
-def get_results_message(typed_chars_group_1, typed_chars_group_2):
+def get_results_message(self, typed_chars_group_1, typed_chars_group_2):
     winner = ''
     winner_group_names = []
 
