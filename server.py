@@ -74,7 +74,6 @@ class Server:
             try:
                 client_socket, addr = self.tcp_server_socket.accept()
                 name = client_socket.recv(BUFFER).decode()
-                print(f'NAME: {name}')
                 group_number = self.insert_to_group(name, client_socket, addr)
                 client_socket.settimeout(10.0)
             except Exception as error:
@@ -95,6 +94,8 @@ class Server:
         group_2_names_str = '\n'.join(group_2_names)
         start_game_message += 'Group 2:\n==\n'
         start_game_message += group_2_names_str
+
+        start_game_message += 'Start pressing keys on your keyboard as fast as you can!!'
 
         start_game = False
 
@@ -125,14 +126,15 @@ class Server:
         while not self.is_game_on:
             pass
         
-        print('BEFOR START GAME MESSAGE')
-        client_socket.send(start_game_message)
-        print(f'AFTER START GAME MESSAGE: {start_game_message}')
+        print(f'BEFOR START GAME MESSAGE:  {start_game_message}')
+        client_socket.send(start_game_message.encode())
+        self.scores[name] = 0
+        print('AFTER START GAME MESSAGE:')
         while self.is_game_on:
             try:
-                letter = connectionSocket.recv(BUFFER)
-                #  Chacek ketter validation
-                self.score[name] += 1
+                letter = client_socket.recv(BUFFER).decode()
+                #  Chacek letter validation
+                self.scores[name] += 1
             except Exception as error:
                 print(error)
 
@@ -152,30 +154,32 @@ class Server:
             # while time.time() - curr_time == 1:
             curr_time += 1
             offer_message = MESSAGE_STRUCT.pack(0xfeedbeef, 2, SERVER_TCP_PORT) #check what is the third thing                
-            print('BEFORE BROADCASTING')
             time.sleep(1)
             self.udp_server_socket.sendto(offer_message, ('172.1.255.255', BROADCASTING_PORT)) # TODO sent in broadcast + manage broadcast
             
 
-def get_results_message(self, typed_chars_group_1, typed_chars_group_2):
-    winner = ''
-    winner_group_names = []
+    def get_results_message(self, typed_chars_group_1, typed_chars_group_2):
+        print('IN GET RESULT MESSAGE')
+        winner = ''
+        winner_group_names = []
 
-    if typed_chars_group_1 > typed_chars_group_2:
-        winner = f"group {GROUP1} wins"
-        winner_group_names = [name for name in self.groups['Group 1'].keys()]
-    elif typed_chars_group_1 < typed_chars_group_2:
-        winner = f"group {GROUP2} wins"
-        winner_group_names = [name for name in self.groups['Group 2'].keys()]
-    else:
-        winner = 'Draw. Both groups typed the same number of characters.'
-    
-    results_message = 'Game over!\n'
-    results_message += f'Group 1 typed in {typed_chars_group_1} characters.'
-    results_message += f'Group 2 typed in {typed_chars_group_2} characters.\n'
-    results_message += winner
-    results_message += 'Congratulations to the winners:\n=='
-    results_message += '\n'.join(winner_group_names)
+        if typed_chars_group_1 > typed_chars_group_2:
+            winner = f"group {GROUP1} wins"
+            winner_group_names = [name for name in self.groups['Group 1'].keys()]
+        elif typed_chars_group_1 < typed_chars_group_2:
+            winner = f"group {GROUP2} wins"
+            winner_group_names = [name for name in self.groups['Group 2'].keys()]
+        else:
+            winner = 'Draw. Both groups typed the same number of characters.'
+
+        print('IN GET RESULT MESSAGE')
+        
+        results_message = 'Game over!\n'
+        results_message += f'Group 1 typed in {typed_chars_group_1} characters.'
+        results_message += f'Group 2 typed in {typed_chars_group_2} characters.\n'
+        results_message += winner
+        results_message += 'Congratulations to the winners:\n=='
+        results_message += '\n'.join(winner_group_names)
 
 def main():
     server = Server()

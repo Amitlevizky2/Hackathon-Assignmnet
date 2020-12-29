@@ -2,6 +2,7 @@ import time
 from scapy.arch import get_if_addr
 from socket import *
 from struct import *
+from getch import getch
 
 PORT_NUMBER = 2120
 TEAM_NAME = 'Moran&Amit\n'
@@ -89,20 +90,15 @@ class Client:
             try:
                 is_game_start_message = self.sock.recv(BUFFER_SIZE)
                 if is_game_start_message:
-                    print(is_game_start_message[0])
+                    print(is_game_start_message.decode())
                     break
             except Exception as error:
                 pass
+        
+        while True:
+            c = getch()
+            self.sock.send(c.encode())
             
-        while True: # TODO: If game is over? stop game 
-            is_game_start_message = self.sock.recv(BUFFER_SIZE)
-
-            if is_game_start_message:
-                print(is_game_start_message[0])
-                break
-
-            c = sys.stdin.read(1)
-            self.sock.send(c)
 
     def finish_game(self):
         print('Server disconnected, listening for offer requests...')
